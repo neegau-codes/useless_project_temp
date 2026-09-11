@@ -1,103 +1,118 @@
-<img width="1280" height="640" alt="git (1)" src="https://github.com/user-attachments/assets/8920b256-2ba8-4988-b824-5351134eb4bd" />
+# AYN NEE ETHA CV API
 
+This is the Computer Vision backend for the AYN NEE ETHA camera application.
+It exposes a simple API that accepts an image and identifies the "Main Character" and the "Anti-Main Character" based on a Main Character Energy™ (MCE) score.
 
+## Stack
 
-# [Project Name] 🎯
+- **Framework**: FastAPI
+- **Inference**: OpenCV DNN
+- **Model**: SSD MobileNet v1 (ONNX)
+- **Labels**: COCO 80 categories
 
+## Installation
 
-## Basic Details
-### Team Name: [Name]
+1. Create a Python virtual environment and activate it:
+   ```bash
+   python -m venv venv
+   # On Windows:
+   .\venv\Scripts\Activate.ps1
+   # On Mac/Linux:
+   source venv/bin/activate
+   ```
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+3. Download the ONNX model (if not already present):
+   ```bash
+   python download_onnx.py
+   ```
 
+## Running the API locally
 
-### Team Members
-- Team Lead: [Name] - [College]
-- Member 2: [Name] - [College]
-- Member 3: [Name] - [College]
+Run the FastAPI server using Uvicorn:
+```bash
+python main.py
+# Or using uvicorn directly:
+uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
 
-### Project Description
-[2-3 lines about what your project does]
+The API will be available at `http://localhost:8000`.
+Swagger docs at `http://localhost:8000/docs`.
 
-### The Problem (that doesn't exist)
-[What ridiculous problem are you solving?]
+## Endpoints
 
-### The Solution (that nobody asked for)
-[How are you solving it? Keep it fun!]
+### `GET /health`
+Returns a simple status indicating whether the API is running and the model is loaded.
 
-## Technical Details
-### Technologies/Components Used
-For Software:
-- [Languages used]
-- [Frameworks used]
-- [Libraries used]
-- [Tools used]
+### `POST /analyze`
+Accepts a multipart/form-data request with a `file` field containing an image.
 
-For Hardware:
-- [List main components]
-- [List specifications]
-- [List tools required]
+**Example Request:**
+```bash
+curl -X POST -F "file=@test.jpg" http://localhost:8000/analyze
+```
 
-### Implementation
-For Software:
-# Installation
-[commands]
+**Response Format:**
+```json
+{
+  "image_width": 1280,
+  "image_height": 720,
+  "detections": [
+    {
+      "label": "person",
+      "confidence": 0.94,
+      "bbox": [120, 80, 400, 500],
+      "normalized_bbox": [0.094, 0.111, 0.313, 0.694],
+      "mce_score": 94,
+      "mce_components": {
+        "person_bonus": 50,
+        "size_score": 27,
+        "center_score": 17
+      }
+    }
+  ],
+  "main_character": { ... },
+  "anti_main_character": { ... }
+}
+```
 
-# Run
-[commands]
+## MCE Scoring
 
-### Project Documentation
-For Software:
+| Component | Range | Description |
+|-----------|-------|-------------|
+| Person Bonus | 0 or 50 | 50 if the detection is a person |
+| Size Score | 0–30 | Based on detection area relative to image |
+| Center Score | 0–20 | Rewards proximity to image center |
+| **Total MCE** | **0–100** | Sum, capped at 100 |
 
-# Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
-*Add caption explaining what this shows*
+## Testing
 
-![Screenshot2](Add screenshot 2 here with proper name)
-*Add caption explaining what this shows*
+### Automated Test Suite
+```bash
+python -m pytest test_cv_pipeline.py -v
+```
 
-![Screenshot3](Add screenshot 3 here with proper name)
-*Add caption explaining what this shows*
+### Debug / Diagnostic Tool
+```bash
+# Direct inference (no server needed):
+python test_analyze.py test_images/person_only.jpg
 
-# Diagrams
-![Workflow](Add your workflow/architecture diagram here)
-*Add caption explaining your workflow*
+# Process all test images:
+python test_analyze.py test_images/
 
-For Hardware:
+# Via running API server:
+python test_analyze.py test_images/person_only.jpg --api
+```
 
-# Schematic & Circuit
-![Circuit](Add your circuit diagram here)
-*Add caption explaining connections*
+### Performance Benchmark
+```bash
+python benchmark.py
+python benchmark.py test_images/multiple_people.jpg 20
+```
 
-![Schematic](Add your schematic diagram here)
-*Add caption explaining the schematic*
-
-# Build Photos
-![Components](Add photo of your components here)
-*List out all components shown*
-
-![Build](Add photos of build process here)
-*Explain the build steps*
-
-![Final](Add photo of final product here)
-*Explain the final build*
-
-### Project Demo
-# Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
-
-## Team Contributions
-- [Name 1]: [Specific contributions]
-- [Name 2]: [Specific contributions]
-- [Name 3]: [Specific contributions]
-
----
-Made with ❤️ at TinkerHub Useless Projects 
-
-![Static Badge](https://img.shields.io/badge/TinkerHub-24?color=%23000000&link=https%3A%2F%2Fwww.tinkerhub.org%2F)
-![Static Badge](https://img.shields.io/badge/UselessProjects--26-26?link=https%3A%2F%2Ftinkerhub.org%2Fevents%2F1M8ORET9A1%2Fuseless-projects-3.0)
-
-
-
+### Legacy Test Script
+```bash
+python test_api.py
+```

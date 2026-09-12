@@ -112,7 +112,16 @@ python benchmark.py
 python benchmark.py test_images/multiple_people.jpg 20
 ```
 
+## Images
+![Input](Screenshot%202026-09-12%20072404.png)
+![Result](Screenshot%202026-09-12%20070650.png)
 ### Legacy Test Script
 ```bash
 python test_api.py
 ```
+## Images
+![Input](Screenshot 2026-09-12 072404.png)
+![Result](Screenshot 2026-09-12 070650.png)
+
+## Video Link: 
+[Screen Recording](https://drive.google.com/file/d/1PmACAr1d_134CpsFdp7tP9PZzAgzd8-V/view?usp=sharing)

@@ -7,3 +7,5 @@ __pycache__/
 *.tmp
 *.bak
 screenshots/
+models/*.onnx
+tore index.html

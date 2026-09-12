@@ -40,24 +40,34 @@ export class CameraService {
     this.stopCamera();
 
     try {
-      const constraints = {
-        video: {
-          facingMode: this.facingMode,
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      };
+      // First try ideal constraints, fallback to true if failed
+      let stream = null;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: this.facingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false
+        });
+      } catch (e) {
+        console.warn('CameraService: Ideal constraints failed, falling back to basic video constraint', e);
+        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      }
 
-      this.stream = await navigator.mediaDevices.getUserMedia(constraints);
+      this.stream = stream;
       this.videoElement.srcObject = this.stream;
+      this.videoElement.setAttribute('playsinline', '');
       
       await new Promise((resolve) => {
-        this.videoElement.onloadedmetadata = () => {
-          this.videoElement.play();
+        if (this.videoElement.readyState >= 2) {
+          this.videoElement.play().catch(e => console.error('Play error:', e));
           this.isStreaming = true;
           resolve();
-        };
+        } else {
+          this.videoElement.onloadedmetadata = () => {
+            this.videoElement.play().catch(e => console.error('Play error:', e));
+            this.isStreaming = true;
+            resolve();
+          };
+        }
       });
 
       if (this.onStreamReadyCallback) {

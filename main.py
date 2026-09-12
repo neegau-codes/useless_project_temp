@@ -21,6 +21,19 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# --- Root Route ---
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "service": "AYN NEE ETHA CV API",
+        "endpoints": {
+            "health": "/health",
+            "docs": "/docs",
+            "analyze": "POST /analyze"
+        }
+    }
+
 # --- Configurable thresholds ---
 CONFIDENCE_THRESHOLD = 0.40
 MIN_AREA_RATIO = 0.001  # 0.1% of frame area

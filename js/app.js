@@ -281,6 +281,9 @@ class App {
   }
 
   toggleViewMode(forcedMode) {
+    // If gallery view is removed, do nothing
+    if (!this.galleryScreen) return;
+
     const isCurrentlyGallery = !this.galleryScreen.classList.contains('hidden');
     const targetMode = forcedMode || (isCurrentlyGallery ? 'camera' : 'gallery');
 

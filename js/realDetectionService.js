@@ -13,7 +13,8 @@ export class RealDetectionService {
    */
   constructor(videoSource, options = {}) {
     this.videoSource = videoSource;
-    this.apiUrl = options.apiUrl || 'http://localhost:8000/analyze';
+    // Use relative route by default so it works seamlessly on localhost and Vercel
+    this.apiUrl = options.apiUrl || (window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1') ? 'http://localhost:8000/analyze' : '/api/analyze');
     this.intervalMs = options.intervalMs || 700;
 
     this.listeners = new Set();

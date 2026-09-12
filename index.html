@@ -1,1 +1,426 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta content="width=device-width, initial-scale=1.0" name="viewport">
+  <title>AYN NEE ETHA — NPC Optical Terminal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com" rel="preconnect">
+  <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect">
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Space Grotesk"', 'sans-serif'],
+            mono: ['"Space Mono"', 'monospace'],
+          },
+          colors: {
+            charcoal: '#0A0A0A',
+            deepblack: '#040404',
+            subtleborder: '#1F1F1F',
+            lightborder: '#2A2A2A',
+            technical: '#737373',
+            offwhite: '#E5E5E5',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #0A0A0A;
+      color: #E5E5E5;
+      font-family: 'Space Grotesk', sans-serif;
+      overflow-x: hidden;
+      user-select: none;
+    }
 
+    /* Subtle optical scanline */
+    .scanline {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.25) 50%, transparent 100%);
+      pointer-events: none;
+      animation: scanSweep 6s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+
+    @keyframes scanSweep {
+      0% { top: 0%; opacity: 0; }
+      15% { opacity: 0.8; }
+      85% { opacity: 0.8; }
+      100% { top: 100%; opacity: 0; }
+    }
+
+    /* Pulse for subtle live indicator */
+    @keyframes liveDot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.3; transform: scale(0.9); }
+    }
+    .animate-live {
+      animation: liveDot 2.4s ease-in-out infinite;
+    }
+
+    /* Flash effect on capture */
+    .shutter-flash {
+      animation: flashFX 0.45s cubic-bezier(0.1, 0.9, 0.2, 1) forwards;
+    }
+    @keyframes flashFX {
+      0% { opacity: 0.95; }
+      100% { opacity: 0; }
+    }
+
+    /* Custom grain texture */
+    .film-grain {
+      background-image: radial-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 0);
+      background-size: 4px 4px;
+    }
+
+    /* Grid reticle crosshairs */
+    .crosshair-corner {
+      position: absolute;
+      width: 10px;
+      height: 10px;
+      border-color: rgba(255, 255, 255, 0.4);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-[#0A0A0A] text-[#E5E5E5] flex flex-col justify-between selection:bg-white selection:text-black">
+
+  <!-- TOP HUD BAR -->
+  <header class="w-full px-6 py-4 border-b border-subtleborder flex items-center justify-between z-30 bg-[#0A0A0A]/90 backdrop-blur-sm">
+    <div class="flex items-baseline space-x-4">
+      <h1 class="text-xl font-bold tracking-[0.25em] text-white uppercase flex items-center gap-2">
+        AYN NEE ETHA
+      </h1>
+      <div class="hidden sm:flex items-center space-x-2 text-[10px] font-mono text-technical tracking-widest border-l border-subtleborder pl-4">
+        <span class="inline-block w-1.5 h-1.5 rounded-full bg-white animate-live"></span>
+        <span>OPTIC.SYS / NPC_PRIORITY_MODE</span>
+      </div>
+    </div>
+    
+    <!-- Center Philosophy Tagline -->
+    <div class="hidden md:block text-[11px] font-mono tracking-[0.18em] text-technical uppercase">
+      A CAMERA FOR PEOPLE WHO AREN'T THE MAIN CHARACTER.
+    </div>
+
+    <!-- Right Controls / System Status -->
+    <div class="flex items-center space-x-6 text-[11px] font-mono">
+      <div class="flex items-center space-x-2 text-technical">
+        <span class="text-white">FEED:</span>
+        <span class="text-white font-bold" id="feed-status">FRONT_SENSOR_ACTIVE</span>
+      </div>
+
+
+      </button>
+      <button class="text-technical hover:text-white transition-colors" id="open-settings-btn" title="Telemetry Configuration">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2"></path>
+          <path d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.2"></path>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN VIEWPORT CONTAINER -->
+  <main class="relative flex-1 flex flex-col justify-center items-center p-3 md:p-6 w-full max-w-7xl mx-auto overflow-hidden">
+    
+    <!-- CAMERA SCREEN VIEW -->
+    <div class="relative w-full h-[620px] md:h-[680px] bg-[#070707] border border-subtleborder rounded-none overflow-hidden flex flex-col justify-between transition-opacity duration-300" id="camera-screen">
+      
+      <!-- Optical scanline overlay -->
+      <div class="scanline"></div>
+      <div class="absolute inset-0 film-grain pointer-events-none z-10 opacity-60"></div>
+      
+      <!-- HUD CORNER ACCENTS -->
+      <div class="absolute top-4 left-4 w-4 h-4 border-t border-l border-white/60 pointer-events-none z-20"></div>
+      <div class="absolute top-4 right-4 w-4 h-4 border-t border-r border-white/60 pointer-events-none z-20"></div>
+      <div class="absolute bottom-4 left-4 w-4 h-4 border-b border-l border-white/60 pointer-events-none z-20"></div>
+      <div class="absolute bottom-4 right-4 w-4 h-4 border-b border-r border-white/60 pointer-events-none z-20"></div>
+
+      <!-- Central alignment crosshairs -->
+      <div class="absolute inset-0 flex items-center justify-center pointer-events-none z-10 opacity-20">
+        <div class="w-12 h-12 border border-dashed border-white rounded-full flex items-center justify-center">
+          <div class="w-1 h-1 bg-white rounded-full"></div>
+        </div>
+      </div>
+
+      <!-- LIVE CAMERA FEED CANVAS & OVERLAY -->
+      <div class="absolute inset-0 w-full h-full bg-[#050505] flex items-center justify-center overflow-hidden" id="viewport-feed">
+        <!-- Live Video Element -->
+        <video id="camera-feed" class="w-full h-full object-cover" autoplay playsinline muted></video>
+        
+        <!-- Dynamic Overlay Canvas for HUD Bounding Boxes -->
+        <canvas id="detection-canvas" class="absolute inset-0 pointer-events-none z-20"></canvas>
+
+        <!-- Camera Error Overlay -->
+        <div id="camera-error-overlay" class="absolute inset-0 bg-[#0A0A0A]/95 z-30 hidden flex-col items-center justify-center p-6 text-center">
+          <div class="w-12 h-12 border border-white/60 rounded-full flex items-center justify-center mb-3 text-white font-mono text-lg">!</div>
+          <div id="camera-error-msg" class="text-xs font-mono text-white uppercase tracking-widest max-w-md mb-4">OPTICAL SENSOR ACCESS REQUIRED</div>
+          <button id="retry-camera-btn" class="px-5 py-2 border border-white bg-white text-black font-mono text-[10px] tracking-widest uppercase font-bold hover:bg-transparent hover:text-white transition-all">
+            GRANT OPTICAL PERMISSION
+          </button>
+        </div>
+
+        <!-- Top Right Scenario Simulator Toggle -->
+        <div class="absolute top-3 right-3 z-30 flex flex-col space-y-1 items-end text-[9px] font-mono text-technical">
+          <div class="flex items-center space-x-2 bg-[#0A0A0A]/80 border border-subtleborder px-2 py-0.5">
+            <span class="text-white">FRAME:</span>
+            <span class="text-white font-bold">UNIFIED OPTICAL FIELD</span>
+          </div>
+          <button id="scenario-toggle-btn" class="text-[9px] text-technical hover:text-white underline tracking-widest uppercase transition-colors">
+            [SIMULATE: TOGGLE SCENARIO]
+          </button>
+        </div>
+      </div>
+
+      <!-- TOP CAMERA OVERLAY LABELS -->
+      <div class="relative z-20 p-6 flex justify-between items-start pointer-events-none">
+        <div>
+          <div class="text-[12px] font-mono font-bold tracking-[0.2em] text-white">
+            AYN NEE ETHA // VER 1.04
+          </div>
+          <div class="text-[9px] font-mono text-technical tracking-widest uppercase mt-0.5">
+            OPTIC SENSOR: DISMISSIVE ENGINE ACTIVE
+          </div>
+        </div>
+        <!-- Exposure / ISO metadata -->
+        <div class="text-right text-[9px] font-mono text-technical space-y-0.5">
+          <div>APERTURE: ƒ/0.95 [DE-EMPHASIZE PROTOCOL]</div>
+          <div>SHUTTER: 1/8000s [BLUR MAIN SUBJECT]</div>
+          <div>ISO: 100 // DEEP MONOCHROME</div>
+        </div>
+      </div>
+
+      <!-- FLASH FX CONTAINER -->
+      <div class="absolute inset-0 bg-white pointer-events-none z-50 opacity-0" id="flash-overlay"></div>
+
+      <!-- BOTTOM VIEWPORT AREA: AI COMMENTARY TELEMETRY + CONTROLS -->
+      <div class="relative z-20 p-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
+        
+        <!-- SARCASTIC AI TELEMETRY CONSOLE -->
+        <div class="w-full md:max-w-md bg-[#0A0A0A]/90 border border-subtleborder p-3.5 backdrop-blur-md">
+          <div class="flex items-center justify-between border-b border-subtleborder pb-1.5 mb-2 text-[9px] font-mono text-technical uppercase tracking-widest">
+            <span class="flex items-center gap-1.5">
+              <span class="w-1.5 h-1.5 rounded-full bg-white"></span>
+              DIAGNOSTIC LOG
+            </span>
+            <span id="log-timestamp">22:52:53.97</span>
+          </div>
+          <!-- Main Sarcastic Feedback Message Stream -->
+          <div class="min-h-[44px] flex flex-col justify-center">
+            <div class="text-xs md:text-sm font-mono font-bold text-white tracking-wide uppercase transition-all duration-300" id="ai-status-headline">
+              INITIALIZING OPTICAL SENSORS
+            </div>
+            <div class="text-[10px] font-mono text-technical tracking-wider uppercase mt-0.5 transition-all duration-300" id="ai-status-subline">
+              CALIBRATING DISMISSIVE ALGORITHMS...
+            </div>
+          </div>
+        </div>
+
+        <!-- CAMERA INTERACTION BAR (SHUTTER + ACTIONS) -->
+        <div class="flex items-center justify-center md:justify-end space-x-6">
+          <!-- Flip Camera Switcher -->
+          <button class="w-10 h-10 border border-subtleborder hover:border-white flex items-center justify-center text-technical hover:text-white transition-all" id="flip-camera-btn" title="Flip Camera Sensor">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"></path>
+            </svg>
+          </button>
+
+          <!-- PRIMARY SHUTTER BUTTON -->
+          <div class="flex flex-col items-center">
+            <button class="group relative w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-white flex items-center justify-center p-1 transition-all active:scale-95 hover:border-white focus:outline-none" id="shutter-button">
+              <span class="w-full h-full rounded-full border border-subtleborder group-hover:border-white/50 flex items-center justify-center transition-all">
+                <span class="w-10 h-10 md:w-12 md:h-12 rounded-full bg-white group-hover:scale-90 transition-transform"></span>
+              </span>
+            </button>
+            <span class="text-[9px] font-mono tracking-[0.2em] text-technical uppercase mt-2">
+              IGNORE MAIN CHARACTER
+            </span>
+          </div>
+
+          <!-- Gallery Trigger -->
+          <button class="w-10 h-10 border border-subtleborder hover:border-white flex items-center justify-center text-technical hover:text-white transition-all" id="gallery-trigger-btn" title="Open NPC Archive">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.3"></path>
+            </svg>
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- GALLERY / ARCHIVE VIEW -->
+    <div class="hidden w-full bg-[#0A0A0A] border border-subtleborder p-6 md:p-8 flex-col space-y-8" id="gallery-screen">
+      <div class="flex flex-col sm:flex-row sm:items-baseline justify-between border-b border-subtleborder pb-4 gap-2">
+        <div>
+          <h2 class="text-lg font-mono font-bold tracking-[0.2em] uppercase text-white">
+            ARCHIVE: NPC DOCUMENTATION SERIES
+          </h2>
+          <p class="text-[11px] font-mono text-technical uppercase mt-0.5">
+            PREVIOUS SESSIONS WHERE THE INTENDED SUBJECT WAS SYSTEMATICALLY DELETED
+          </p>
+        </div>
+        <button class="border border-white bg-white text-black px-4 py-1.5 text-[10px] font-mono tracking-widest uppercase font-bold hover:bg-transparent hover:text-white transition-all self-start" id="return-to-shutter-btn">
+          ← RETURN TO LIVE SHUTTER
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        <div class="md:col-span-7 bg-[#070707] border border-subtleborder p-4 flex flex-col space-y-3">
+          <div class="relative aspect-[16/10] overflow-hidden bg-black group">
+            <img alt="Captured Scene" class="w-full h-full object-cover grayscale contrast-125" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg">
+            <div class="absolute left-8 top-12 w-48 h-64 backdrop-blur-xl bg-black/30 border border-white/20 flex flex-col justify-end p-2">
+              <span class="text-[8px] font-mono text-technical uppercase tracking-widest">[PROTAGONIST SCRUBBED]</span>
+            </div>
+            <div class="absolute right-14 top-16 border border-white p-1">
+              <span class="text-[8px] font-mono bg-white text-black px-1 uppercase font-bold">PRIMARY FOCUS: BARISTA NPC</span>
+            </div>
+          </div>
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between text-[10px] font-mono text-technical border-t border-subtleborder pt-3 gap-2">
+            <div>
+              <span class="text-white font-bold">01 / STUDY: ESPRESSO COUNTER OBSERVER</span>
+              <div class="text-[9px] text-technical">MAIN CHARACTER: BLURRED (98% EXTINCTION) · NPCs: 2 IDENTIFIED</div>
+            </div>
+            <div class="text-right">
+              <div>11 SEP 2026 // 22:41:04</div>
+              <span class="text-white">“A MUCH BETTER COMPOSITION.”</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="md:col-span-5 flex flex-col space-y-6">
+          <div class="bg-[#070707] border border-subtleborder p-3.5 flex flex-col space-y-2">
+            <div class="relative aspect-video overflow-hidden bg-black">
+              <img alt="NPC Portrait" class="w-full h-full object-cover grayscale contrast-150" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg">
+              <div class="absolute top-2 left-2 bg-[#0A0A0A] border border-white px-1.5 py-0.5 text-[8px] font-mono text-white uppercase">
+                NPC 04: PASSENGER IN SEAT 14B
+              </div>
+            </div>
+            <div class="text-[9px] font-mono text-technical flex justify-between">
+              <span>02 / METRO COMMUTER</span>
+              <span class="text-white">REASON: ZERO NARCISSISM</span>
+            </div>
+          </div>
+
+          <div class="bg-[#070707] border border-subtleborder p-3.5 flex flex-col space-y-2">
+            <div class="relative aspect-video overflow-hidden bg-black">
+              <img alt="NPC Sidewalk" class="w-full h-full object-cover grayscale contrast-125" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg">
+              <div class="absolute top-2 left-2 bg-[#0A0A0A] border border-white px-1.5 py-0.5 text-[8px] font-mono text-white uppercase">
+                NPC 07: CROSSWALK BYSTANDER
+              </div>
+            </div>
+            <div class="text-[9px] font-mono text-technical flex justify-between">
+              <span>03 / URBAN FLÂNEUR</span>
+              <span class="text-white">MAIN CHARACTER: ELIMINATED</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- CAPTURED RESULT MODAL -->
+  <div class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex-col items-center justify-center p-4" id="result-modal">
+    <div class="w-full max-w-2xl bg-[#0A0A0A] border border-white/80 p-6 flex flex-col space-y-6 shadow-2xl relative">
+      <!-- Modal Top Status -->
+      <div class="flex items-center justify-between border-b border-subtleborder pb-3 text-[10px] font-mono tracking-widest text-technical uppercase">
+        <span class="text-white font-bold flex items-center gap-2" id="result-anti-label">
+          <span class="w-2 h-2 bg-white"></span>
+          ANTI-MAIN CHARACTER PRIORITIZED
+        </span>
+        <span id="result-status-badge">⭐ NOW THE MAIN CHARACTER</span>
+      </div>
+
+      <!-- Captured Visual Preview -->
+      <div class="relative aspect-[16/10] bg-[#050505] border border-subtleborder overflow-hidden">
+        <img alt="Captured NPC Frame" class="w-full h-full object-cover grayscale contrast-125" id="result-photo" src="https://www.gstatic.com/labs-code/stitch/stitch-placeholder-300x300.svg">
+      </div>
+
+      <!-- Metadata & Sarcastic Critical Verdict -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border border-subtleborder p-3 text-[10px] font-mono">
+        <div>
+          <span class="text-technical uppercase block text-[8px]">MAIN CHARACTER ENERGY™</span>
+          <span class="text-white font-bold" id="result-mce-score">4%</span>
+        </div>
+        <div>
+          <span class="text-technical uppercase block text-[8px]">PHOTOGRAPHIC IMPORTANCE</span>
+          <span class="text-white font-bold" id="result-importance">7% (NEGLIGIBLE)</span>
+        </div>
+        <div>
+          <span class="text-technical uppercase block text-[8px]">REASON FOR SELECTION</span>
+          <span class="text-white italic" id="result-reason">"Nobody was paying attention to it."</span>
+        </div>
+      </div>
+
+      <!-- Modal Action Buttons -->
+      <div class="flex items-center justify-between pt-2 border-t border-subtleborder">
+        <button class="px-5 py-2 border border-subtleborder hover:border-white text-technical hover:text-white font-mono text-[10px] tracking-widest uppercase transition-colors" id="retake-btn">
+          [TAKE ANOTHER / RESUME FEED]
+        </button>
+        <div class="flex space-x-3">
+          <button class="px-5 py-2 border border-white bg-white text-black font-mono text-[10px] tracking-widest uppercase font-bold hover:bg-transparent hover:text-white transition-all" id="save-archive-btn">
+            SAVE ARCHIVE
+          </button>
+          <button class="px-5 py-2 border border-subtleborder hover:border-white font-mono text-[10px] tracking-widest uppercase text-white transition-colors" id="share-proof-btn">
+            SHARE PROOF
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELEMETRY SETTINGS MODAL -->
+  <div class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" id="settings-modal">
+    <div class="w-full max-w-md bg-[#0A0A0A] border border-white p-6 space-y-5 text-mono font-mono text-xs">
+      <div class="flex justify-between items-center border-b border-subtleborder pb-3">
+        <span class="font-bold tracking-widest uppercase text-white">TERMINAL CALIBRATION</span>
+        <button class="text-technical hover:text-white" id="close-settings-btn">[ESC]</button>
+      </div>
+      <div class="space-y-4 text-[11px]">
+        <div class="flex justify-between items-center">
+          <span class="text-technical">MAIN CHARACTER GAUSSIAN BLUR:</span>
+          <span class="text-white font-bold">MAXIMAL (28px BBOX)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-technical">SARCASTIC TELEMETRY FREQUENCY:</span>
+          <span class="text-white font-bold">UNFILTERED / ACIDIC</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-technical">NEON COLOR INHIBITOR:</span>
+          <span class="text-white font-bold">LOCKED (0% SATURATION)</span>
+        </div>
+        <div class="flex justify-between items-center">
+          <span class="text-technical">NPC AFFINITY WEIGHT:</span>
+          <span class="text-white font-bold">99.8% BACKGROUND PRIORITY</span>
+        </div>
+      </div>
+      <button class="w-full py-2 bg-white text-black font-bold uppercase tracking-widest text-[10px] hover:bg-offwhite transition-colors" id="accept-settings-btn">
+        ACCEPT CALIBRATION
+      </button>
+    </div>
+  </div>
+
+  <!-- FOOTER TECHNICAL STATUS -->
+  <footer class="w-full px-6 py-3 border-t border-subtleborder flex flex-col sm:flex-row items-center justify-between text-[10px] font-mono text-technical gap-2 z-30 bg-[#0A0A0A]">
+    <div class="flex items-center space-x-4">
+      <span>LATENCY: 12ms</span>
+      <span>•</span>
+      <span>FRAME_BUFFER: 60FPS</span>
+      <span>•</span>
+      <span>DETECTION_MODEL: MOCK_CV_V1</span>
+    </div>
+    <div class="tracking-widest uppercase text-white">
+      AYN NEE ETHA — BUILT FOR THE EXTRAS
+    </div>
+  </footer>
+
+  <!-- Modular Application Entrypoint -->
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>

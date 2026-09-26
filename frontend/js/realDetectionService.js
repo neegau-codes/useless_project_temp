@@ -8,12 +8,12 @@ export class RealDetectionService {
   /**
    * @param {HTMLVideoElement | (() => HTMLVideoElement)} videoSource - Video element or function returning video element
    * @param {Object} [options]
-   * @param {string} [options.apiUrl='http://localhost:8000/analyze']
+   * @param {string} [options.apiUrl='https://useless-project-temp-004j.onrender.com/analyze']
    * @param {number} [options.intervalMs=700]
    */
   constructor(videoSource, options = {}) {
     this.videoSource = videoSource;
-    this.apiUrl = options.apiUrl || 'http://localhost:8000/analyze';
+    this.apiUrl = options.apiUrl || 'https://useless-project-temp-004j.onrender.com/analyze';
     this.intervalMs = options.intervalMs || 700;
 
     this.listeners = new Set();
@@ -143,7 +143,11 @@ export class RealDetectionService {
 
     } catch (err) {
       console.warn('RealDetectionService: Backend request failed:', err);
-      this.notify(this.createEmptyResult('BACKEND_UNAVAILABLE', 'CV BACKEND OFFLINE', 'EXPECTED AT HTTP://LOCALHOST:8000/ANALYZE'));
+      this.notify(this.createEmptyResult(
+        'BACKEND_UNAVAILABLE',
+        'CV BACKEND OFFLINE',
+        'EXPECTED AT RENDER CV BACKEND'
+      ));
     } finally {
       this.isAnalyzing = false;
     }
@@ -174,7 +178,7 @@ export class RealDetectionService {
    */
   mapBackendResponseToDetectionResult(data) {
     const rawDetections = Array.isArray(data.detections) ? data.detections : [];
-    
+
     if (rawDetections.length === 0) {
       return this.createEmptyResult('READY', 'SEARCHING SCENE FOR SUBJECTS', 'NO VALID SUBJECTS DETECTED IN CAMERA FIELD.');
     }
@@ -188,7 +192,7 @@ export class RealDetectionService {
     const frontendDetections = rawDetections.map((det, index) => {
       const detId = `det-${index}`;
       const normBbox = det.normalized_bbox || [0, 0, 0, 0];
-      
+
       // Convert normalized_bbox [xmin, ymin, w, h] to { x, y, width, height }
       const bbox = {
         x: normBbox[0],
@@ -197,12 +201,12 @@ export class RealDetectionService {
         height: normBbox[3]
       };
 
-      const isMainChar = mcObj && 
-        mcObj.normalized_bbox && 
+      const isMainChar = mcObj &&
+        mcObj.normalized_bbox &&
         normBbox.every((val, i) => Math.abs(val - mcObj.normalized_bbox[i]) < 0.001);
 
-      const isAntiMainChar = amcObj && 
-        amcObj.normalized_bbox && 
+      const isAntiMainChar = amcObj &&
+        amcObj.normalized_bbox &&
         normBbox.every((val, i) => Math.abs(val - amcObj.normalized_bbox[i]) < 0.001);
 
       let role = 'npc';

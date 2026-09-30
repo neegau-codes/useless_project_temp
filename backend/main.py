@@ -12,26 +12,33 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="AYN NEE ETHA CV API")
 
-# CORS — allow frontend dev server to call the API
+# CORS — allow frontend to call the API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=[
+        "https://ayn-nee-etha.vercel.app",
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000"
+    ],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from fastapi.responses import Response
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon():
+    return Response(content=b"", media_type="image/x-icon", status_code=204)
 
 # --- Root Route ---
 @app.get("/")
 def read_root():
     return {
-        "status": "online",
-        "service": "AYN NEE ETHA CV API",
-        "endpoints": {
-            "health": "/health",
-            "docs": "/docs",
-            "analyze": "POST /analyze"
-        }
+        "service": "AYN NEE ETHA CV Backend",
+        "status": "online"
     }
 
 # --- Configurable thresholds ---
@@ -238,4 +245,5 @@ async def analyze_image(file: UploadFile = File(...)):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)

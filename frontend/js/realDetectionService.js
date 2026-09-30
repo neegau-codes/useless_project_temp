@@ -4,16 +4,25 @@
  * Emits DetectionResult payloads matching the frontend contract expected by App and OverlayRenderer.
  */
 
+const PRODUCTION_API_URL = 'https://useless-project-temp-004j.onrender.com/analyze';
+
 export class RealDetectionService {
   /**
    * @param {HTMLVideoElement | (() => HTMLVideoElement)} videoSource - Video element or function returning video element
    * @param {Object} [options]
-   * @param {string} [options.apiUrl='https://useless-project-temp-004j.onrender.com/analyze']
+   * @param {string} [options.apiUrl]
    * @param {number} [options.intervalMs=700]
    */
   constructor(videoSource, options = {}) {
     this.videoSource = videoSource;
-    this.apiUrl = options.apiUrl || 'https://useless-project-temp-004j.onrender.com/analyze';
+    // Explicitly use the production URL unless a development URL is intentionally passed
+    this.apiUrl = options.apiUrl || PRODUCTION_API_URL;
+    
+    // Prevent accidental localhost fallback in production domain
+    if (typeof window !== 'undefined' && window.location.hostname === 'ayn-nee-etha.vercel.app') {
+      this.apiUrl = PRODUCTION_API_URL;
+    }
+
     this.intervalMs = options.intervalMs || 700;
 
     this.listeners = new Set();
@@ -127,17 +136,41 @@ export class RealDetectionService {
       const formData = new FormData();
       formData.append('file', blob, 'frame.jpg');
 
-      const response = await fetch(this.apiUrl, {
-        method: 'POST',
-        body: formData
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds to allow Render cold start
+
+      let response;
+      try {
+        response = await fetch(this.apiUrl, {
+          method: 'POST',
+          body: formData,
+          signal: controller.signal
+        });
+      } catch (networkErr) {
+        clearTimeout(timeoutId);
+        if (networkErr.name === 'AbortError') {
+           this.notify(this.createEmptyResult('TIMEOUT', 'CV BACKEND TIMEOUT', 'RENDER SERVER WAKING UP OR OVERLOADED'));
+        } else {
+           this.notify(this.createEmptyResult('NETWORK_ERROR', 'CV BACKEND UNAVAILABLE', 'COULD NOT REACH SERVER OR CORS FAILURE'));
+        }
+        return;
+      }
+      
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         this.notify(this.createEmptyResult('HTTP_ERROR', `BACKEND ERROR [HTTP ${response.status}]`, 'CV SERVER RETURNED AN UNEXPECTED STATUS'));
         return;
       }
 
-      const data = await response.json();
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonErr) {
+        this.notify(this.createEmptyResult('INVALID_RESPONSE', 'INVALID BACKEND RESPONSE', 'CV SERVER RETURNED MALFORMED DATA'));
+        return;
+      }
+
       const detectionResult = this.mapBackendResponseToDetectionResult(data);
       this.notify(detectionResult);
 
@@ -146,7 +179,7 @@ export class RealDetectionService {
       this.notify(this.createEmptyResult(
         'BACKEND_UNAVAILABLE',
         'CV BACKEND OFFLINE',
-        'EXPECTED AT RENDER CV BACKEND'
+        'UNEXPECTED ERROR DURING ANALYSIS'
       ));
     } finally {
       this.isAnalyzing = false;

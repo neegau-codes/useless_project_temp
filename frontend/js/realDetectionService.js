@@ -6,6 +6,9 @@
 
 const PRODUCTION_API_URL = 'https://useless-project-temp-004j.onrender.com/analyze';
 
+// Request timeout in milliseconds (60 seconds) to accommodate Render cold starts
+const REQUEST_TIMEOUT_MS = 60000;
+
 export class RealDetectionService {
   /**
    * @param {HTMLVideoElement | (() => HTMLVideoElement)} videoSource - Video element or function returning video element
@@ -29,6 +32,9 @@ export class RealDetectionService {
     this.timerId = null;
     this.isAnalyzing = false;
     this.isRunning = false;
+
+    // Track whether the very first request has been attempted yet
+    this.isFirstRequest = true;
 
     // Create offscreen canvas for frame capture
     this.offscreenCanvas = document.createElement('canvas');
@@ -113,7 +119,11 @@ export class RealDetectionService {
   }
 
   /**
-   * Capture frame and POST to FastAPI /analyze endpoint
+   * Capture frame and POST to FastAPI /analyze endpoint.
+   * - Uses REQUEST_TIMEOUT_MS (60 s) to survive Render cold starts.
+   * - Guards against overlapping requests via this.isAnalyzing.
+   * - Shows a non-error "CONNECTING" state on the first request.
+   * - Retries exactly once after a short delay on timeout/network failure.
    */
   async analyzeCurrentFrame() {
     if (this.isAnalyzing) return; // Prevent overlapping requests
@@ -126,6 +136,12 @@ export class RealDetectionService {
 
     this.isAnalyzing = true;
 
+    // On the very first request, show a non-error connecting state
+    const isFirstAttempt = this.isFirstRequest;
+    if (isFirstAttempt) {
+      this.notify(this.createEmptyResult('CONNECTING', 'CONNECTING TO CV BACKEND...', 'INITIALIZING RENDER SERVER — PLEASE WAIT...'));
+    }
+
     try {
       const blob = await this.captureFrameAsBlob(videoEl, 640, 0.85);
       if (!blob) {
@@ -133,44 +149,94 @@ export class RealDetectionService {
         return;
       }
 
-      const formData = new FormData();
-      formData.append('file', blob, 'frame.jpg');
+      // Inner helper: send one attempt and return { data } on success or throw
+      const sendRequest = async (frameBlob) => {
+        const formData = new FormData();
+        formData.append('file', frameBlob, 'frame.jpg');
 
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds to allow Render cold start
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
-      let response;
-      try {
-        response = await fetch(this.apiUrl, {
-          method: 'POST',
-          body: formData,
-          signal: controller.signal
-        });
-      } catch (networkErr) {
-        clearTimeout(timeoutId);
-        if (networkErr.name === 'AbortError') {
-           this.notify(this.createEmptyResult('TIMEOUT', 'CV BACKEND TIMEOUT', 'RENDER SERVER WAKING UP OR OVERLOADED'));
-        } else {
-           this.notify(this.createEmptyResult('NETWORK_ERROR', 'CV BACKEND UNAVAILABLE', 'COULD NOT REACH SERVER OR CORS FAILURE'));
+        try {
+          const response = await fetch(this.apiUrl, {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal
+          });
+          clearTimeout(timeoutId);
+
+          if (!response.ok) {
+            const err = new Error(`HTTP ${response.status}`);
+            err.type = 'HTTP_ERROR';
+            err.status = response.status;
+            throw err;
+          }
+
+          const data = await response.json().catch(() => {
+            const err = new Error('Invalid JSON');
+            err.type = 'INVALID_RESPONSE';
+            throw err;
+          });
+
+          return data;
+        } catch (fetchErr) {
+          clearTimeout(timeoutId);
+          throw fetchErr;
         }
-        return;
-      }
-      
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        this.notify(this.createEmptyResult('HTTP_ERROR', `BACKEND ERROR [HTTP ${response.status}]`, 'CV SERVER RETURNED AN UNEXPECTED STATUS'));
-        return;
-      }
+      };
 
       let data;
       try {
-        data = await response.json();
-      } catch (jsonErr) {
-        this.notify(this.createEmptyResult('INVALID_RESPONSE', 'INVALID BACKEND RESPONSE', 'CV SERVER RETURNED MALFORMED DATA'));
-        return;
+        data = await sendRequest(blob);
+      } catch (firstErr) {
+        // Decide error category
+        const isAbort = firstErr.name === 'AbortError';
+        const isNetwork = !isAbort && firstErr.type !== 'HTTP_ERROR' && firstErr.type !== 'INVALID_RESPONSE';
+
+        if (isAbort || isNetwork) {
+          // Show connecting state during the retry delay instead of an error
+          this.notify(this.createEmptyResult('CONNECTING', 'CONNECTING TO CV BACKEND...', 'RETRYING — RENDER SERVER MAY BE WAKING UP...'));
+
+          // Wait 3 seconds then retry exactly once
+          await new Promise(resolve => setTimeout(resolve, 3000));
+
+          // Capture a fresh frame for the retry
+          const retryBlob = await this.captureFrameAsBlob(videoEl, 640, 0.85);
+          if (!retryBlob) {
+            this.notify(this.createEmptyResult('FRAME_ERROR', 'FRAME CAPTURE ERROR', 'UNABLE TO EXTRACT FRAME FROM OPTICAL SENSOR'));
+            return;
+          }
+
+          try {
+            data = await sendRequest(retryBlob);
+          } catch (retryErr) {
+            // Final failure after retry
+            const isRetryAbort = retryErr.name === 'AbortError';
+            if (isRetryAbort) {
+              this.notify(this.createEmptyResult('TIMEOUT', 'CV BACKEND TIMEOUT', 'RENDER SERVER DID NOT RESPOND IN TIME — TRY AGAIN SHORTLY'));
+            } else if (retryErr.type === 'HTTP_ERROR') {
+              this.notify(this.createEmptyResult('HTTP_ERROR', `BACKEND ERROR [HTTP ${retryErr.status}]`, 'CV SERVER RETURNED AN UNEXPECTED STATUS'));
+            } else if (retryErr.type === 'INVALID_RESPONSE') {
+              this.notify(this.createEmptyResult('INVALID_RESPONSE', 'INVALID BACKEND RESPONSE', 'CV SERVER RETURNED MALFORMED DATA'));
+            } else {
+              this.notify(this.createEmptyResult('NETWORK_ERROR', 'CV BACKEND UNAVAILABLE', 'COULD NOT REACH SERVER OR CORS FAILURE'));
+            }
+            return;
+          }
+        } else if (firstErr.type === 'HTTP_ERROR') {
+          this.notify(this.createEmptyResult('HTTP_ERROR', `BACKEND ERROR [HTTP ${firstErr.status}]`, 'CV SERVER RETURNED AN UNEXPECTED STATUS'));
+          return;
+        } else if (firstErr.type === 'INVALID_RESPONSE') {
+          this.notify(this.createEmptyResult('INVALID_RESPONSE', 'INVALID BACKEND RESPONSE', 'CV SERVER RETURNED MALFORMED DATA'));
+          return;
+        } else {
+          this.notify(this.createEmptyResult('NETWORK_ERROR', 'CV BACKEND UNAVAILABLE', 'COULD NOT REACH SERVER OR CORS FAILURE'));
+          return;
+        }
       }
 
+      // Successful response — mark first request done and map to detection result
+      this.isFirstRequest = false;
       const detectionResult = this.mapBackendResponseToDetectionResult(data);
       this.notify(detectionResult);
 
@@ -185,6 +251,7 @@ export class RealDetectionService {
       this.isAnalyzing = false;
     }
   }
+
 
   /**
    * Capture resized image blob from video element
